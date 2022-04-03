@@ -23,26 +23,27 @@
 
 namespace CAULDRON_DX12
 {
-#define CS_MAX_MIP_LEVELS 12
+#define SPD_MAX_MIP_LEVELS 12
 
-    class CSDownsampler
+    class SPD_CS_Linear_Sampler
     {
     public:
-        void OnCreate(Device *pDevice, ResourceViewHeaps *pResourceViewHeaps, DynamicBufferRing *pConstantBufferRing, DXGI_FORMAT outFormat);
+        void OnCreate(Device *pDevice, ResourceViewHeaps *pResourceViewHeaps, DynamicBufferRing *pConstantBufferRing, DXGI_FORMAT outFormat, bool fallback, bool packed);
         void OnDestroy();
 
         void OnCreateWindowSizeDependentResources(uint32_t Width, uint32_t Height, Texture *pInput, int mips);
         void OnDestroyWindowSizeDependentResources();
 
-        void Draw(ID3D12GraphicsCommandList* pCommandList);
+        void Draw(ID3D12GraphicsCommandList2* pCommandList);
         Texture *GetTexture() { return &m_result; }
-        CBV_SRV_UAV GetTextureView(int i) { return m_mip[i].m_SRV; }
+        CBV_SRV_UAV GetTextureView(int i) { if (i == 0) { return m_sourceSRV; } else { return m_SRV[i]; } }
         void Gui();
 
         struct cbDownscale
         {
-            uint32_t outWidth, outHeight;
-            float invWidth, invHeight;
+            int mips;
+            int numWorkGroups;
+            float invInputSize[2];
         };
 
     private:
@@ -52,21 +53,18 @@ namespace CAULDRON_DX12
         Texture                      *m_pInput;
         Texture                       m_result;
 
-        struct Pass
-        {
-            CBV_SRV_UAV     m_constBuffer; // dimension
-            CBV_SRV_UAV     m_RTV; //dest -> more like UAV x)
-            CBV_SRV_UAV     m_SRV; //src
-        };
+        CBV_SRV_UAV                   m_constBuffer; // dimension
+        CBV_SRV_UAV                   m_UAV[SPD_MAX_MIP_LEVELS]; //dest
+        CBV_SRV_UAV                   m_SRV[SPD_MAX_MIP_LEVELS]; // for display of mips using imGUI
+        CBV_SRV_UAV                   m_sourceSRV; //src
 
-        Pass                          m_mip[CS_MAX_MIP_LEVELS];
+        CBV_SRV_UAV                   m_globalCounter;
+        Texture                       m_globalCounterBuffer;
 
         ResourceViewHeaps            *m_pResourceViewHeaps;
         DynamicBufferRing            *m_pConstantBufferRing;
         ID3D12RootSignature	         *m_pRootSignature;
         ID3D12PipelineState	         *m_pPipeline = NULL;
-
-        SAMPLER                       m_Sampler;
 
         uint32_t                      m_Width;
         uint32_t                      m_Height;

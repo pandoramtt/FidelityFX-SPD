@@ -19,14 +19,14 @@
 #pragma once
 
 #include "CSDownsampler.h"
+#include "SPD_Versions.h"
 #include "PSDownsampler.h"
-#include "SPDVersions.h"
 
 static const int backBufferCount = 3;
 
 #define USE_VID_MEM true
 
-using namespace CAULDRON_VK;
+using namespace CAULDRON_DX12;
 
 //
 // This class deals with the GPU side of the sample.
@@ -35,11 +35,12 @@ using namespace CAULDRON_VK;
 enum class Downsampler
 {
     PS,
-    MultipassCS,
-    SPDCS
+    Multipass_CS,
+    SPD_CS,
+    SPD_CS_Linear_Sampler,
 };
 
-class SPDRenderer
+class SPD_Renderer
 {
 public:
     struct Spotlight
@@ -51,34 +52,27 @@ public:
 
     struct State
     {
-        float           time;
-        Camera          camera;
+        float time;
+        Camera camera;
+        
+        float exposure;
+        float iblFactor;
+        float emmisiveFactor;
+        
+        int   toneMapper;
+        int   skyDomeType;
+        bool  bDrawBoundingBoxes;
 
-        float           exposure;
-        float           iblFactor;
-        float           emmisiveFactor;
+        uint32_t  spotlightCount;
+        Spotlight spotlight[4];
+        bool  bDrawLightFrustum;
 
-        int             toneMapper;
-        int             skyDomeType;
-        bool            bDrawBoundingBoxes;
-
-        uint32_t        spotlightCount;
-        Spotlight       spotlight[4];
-
-        bool            isBenchmarking;
-        bool            isValidationLayerEnabled;
-
-        bool            bDrawLightFrustum;
-
-        Downsampler     downsampler;
-        SPDLoad         spdLoad;
-        SPDWaveOps      spdWaveOps;
-        SPDPacked       spdPacked;
-
-        int             downsamplerImGUISlice;
+        Downsampler downsampler;
+        SPD_Version spdVersion;
+        SPD_Packed spdPacked;
     };
 
-    void OnCreate(Device *pDevice, SwapChain *pSwapChain, bool usingDescriptorIndexing = false);
+    void OnCreate(Device* pDevice, SwapChain *pSwapChain);
     void OnDestroy();
 
     void OnCreateWindowSizeDependentResources(SwapChain *pSwapChain, uint32_t Width, uint32_t Height);
@@ -87,83 +81,72 @@ public:
     int LoadScene(GLTFCommon *pGLTFCommon, int stage = 0);
     void UnloadScene();
 
-    const std::vector<TimeStamp> &GetTimingValues() { return m_timeStamps; }
+    const std::vector<TimeStamp> &GetTimingValues() { return m_TimeStamps; }
 
     void OnRender(State *pState, SwapChain *pSwapChain);
 
 private:
-    Device                         *m_pDevice = nullptr;
+    Device                         *m_pDevice;
 
     uint32_t                        m_Width;
     uint32_t                        m_Height;
 
-    VkRect2D                        m_scissor;
-    VkViewport                      m_viewport;
+    D3D12_VIEWPORT                  m_viewPort;
+    D3D12_RECT                      m_RectScissor;
 
     // Initialize helper classes
     ResourceViewHeaps               m_resourceViewHeaps;
-    UploadHeap                      m_uploadHeap;
-    DynamicBufferRing               m_constantBufferRing;
-    StaticBufferPool                m_vidMemBufferPool;
-    StaticBufferPool                m_sysMemBufferPool;
-    CommandListRing                 m_commandListRing;
+    UploadHeap                      m_UploadHeap;
+    DynamicBufferRing               m_ConstantBufferRing;
+    StaticBufferPool                m_VidMemBufferPool;
+    CommandListRing                 m_CommandListRing;
     GPUTimestamps                   m_GPUTimer;
 
     //gltf passes
-    GLTFTexturesAndBuffers         *m_pGLTFTexturesAndBuffers = nullptr;
-    GltfPbrPass                    *m_pGltfPBR = nullptr;
-    GltfDepthPass                  *m_pGltfDepth = nullptr;
-    GltfBBoxPass                   *m_pGltfBBox = nullptr;
+    GLTFTexturesAndBuffers         *m_pGLTFTexturesAndBuffers;
+    GltfPbrPass                    *m_gltfPBR;
+    GltfDepthPass                  *m_gltfDepth;
+    GltfBBoxPass                   *m_gltfBBox;
 
     // effects
     SkyDome                         m_skyDome;
     SkyDomeProc                     m_skyDomeProc;
     ToneMapping                     m_toneMapping;
 
-    // downsampling - m_HDR
+    // Downsampling
     PSDownsampler                   m_PSDownsampler;
     CSDownsampler                   m_CSDownsampler;
-    SPDVersions                     m_SPDVersions;
-
-    VkCommandPool                   m_CommandPool;
-    VkCommandBuffer                 m_CommandBufferInit;
+    SPD_Versions                    m_SPD_Versions;
 
     // GUI
-    ImGUI                           m_imGUI;
+    ImGUI                           m_ImGUI;
 
     // Temporary render targets
 
     // depth buffer
     Texture                         m_depthBuffer;
-    VkImageView                     m_depthBufferDSV;
+    DSV                             m_depthBufferDSV;
 
     // shadowmaps
     Texture                         m_shadowMap;
-    VkImageView                     m_shadowMapDSV;
-    VkImageView                     m_shadowMapSRV;
+    DSV                             m_ShadowMapDSV;
+    CBV_SRV_UAV                     m_ShadowMapSRV;
 
     // MSAA RT
     Texture                         m_HDRMSAA;
-    VkImageView                     m_HDRMSAARTV;
+    RTV                             m_HDRRTVMSAA;
 
     // Resolved RT
     Texture                         m_HDR;
-    VkImageView                     m_HDRSRV;
-    VkImageView                     m_HDRUAV;
+    CBV_SRV_UAV                     m_HDRSRV;
+    RTV                             m_HDRRTV;
 
     // widgets
     Wireframe                       m_wireframe;
     WireframeBox                    m_wireframeBox;
 
-    VkRenderPass                    m_renderPassShadow;
-    VkRenderPass                    m_renderPassHDRMSAA;
-    VkRenderPass                    m_renderPassPBRHDR;
+    std::vector<TimeStamp>          m_TimeStamps;
 
-    VkFramebuffer                   m_frameBufferShadow;
-    VkFramebuffer                   m_frameBufferHDRMSAA;
-    VkFramebuffer                   m_frameBufferPBRHDR;
-
-    std::vector<TimeStamp>          m_timeStamps;
-
-    bool                            m_usingDescriptorIndexing;
+    DXGI_FORMAT                     m_format;
 };
+

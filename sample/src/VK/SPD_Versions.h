@@ -18,59 +18,57 @@
 // THE SOFTWARE.
 #pragma once
 
-#include "Base/StaticBufferPool.h"
-#include "Base/Texture.h"
+#include "PostProc/PostProcCS.h"
+#include "PostProc/PostProcPS.h"
+#include "Base/ResourceViewHeaps.h"
+
+#include "SPD_CS.h"
+#include "SPD_CS_Linear_Sampler.h"
 
 namespace CAULDRON_VK
 {
-#define CS_MAX_MIP_LEVELS 12
+    enum class SPD_Version
+    {
+        SPD_No_WaveOps,
+        SPD_WaveOps,
+    };
 
-    class CSDownsampler
+    enum class SPD_Packed
+    {
+        SPD_Non_Packed,
+        SPD_Packed,
+    };
+
+    class SPD_Versions
     {
     public:
         void OnCreate(Device* pDevice, ResourceViewHeaps *pResourceViewHeaps, VkFormat outFormat);
         void OnDestroy();
 
-        void OnCreateWindowSizeDependentResources(VkCommandBuffer cmd_buf, uint32_t Width, uint32_t Height, Texture *pInput, int mips);
+        void OnCreateWindowSizeDependentResources(VkCommandBuffer cmd_buf, uint32_t Width, uint32_t Height, Texture *pInput);
         void OnDestroyWindowSizeDependentResources();
 
-        void Draw(VkCommandBuffer cmd_buf);
-        Texture *GetTexture() { return &m_result; }
-        VkImageView GetTextureView(int i) { return m_mip[i].m_SRV; }
-        void Gui();
+        void Dispatch(VkCommandBuffer cmd_buf, SPD_Version spdVersion, SPD_Packed spdPacked);
+        void Gui(SPD_Version spdVersion, SPD_Packed spdPacked);
 
-        struct PushConstantsCSSimple
-        {
-            float outputSize[2];
-            float invInputSize[2];
-        };
+        void DispatchLinearSamplerVersion(VkCommandBuffer cmd_buf, SPD_Version spdVersion, SPD_Packed spdPacked);
+        void GuiLinearSamplerVersion(SPD_Version spdVersion, SPD_Packed spdPacked);
 
     private:
-        Device *m_pDevice;
-        VkFormat m_outFormat;
+        Device* m_pDevice;
 
-        Texture m_result;
+        SPD_CS m_spd_WaveOps_NonPacked;
+        SPD_CS m_spd_No_WaveOps_NonPacked;
 
-        struct Pass
-        {
-            VkImageView m_RTV;
-            VkImageView m_SRV;
-            VkDescriptorSet m_descriptorSet;
-        };
+        SPD_CS m_spd_WaveOps_Packed;
+        SPD_CS m_spd_No_WaveOps_Packed;
 
-        Pass m_mip[CS_MAX_MIP_LEVELS];
+        SPD_CS_Linear_Sampler m_spd_WaveOps_NonPacked_Linear_Sampler;
+        SPD_CS_Linear_Sampler m_spd_No_WaveOps_NonPacked_Linear_Sampler;
 
-        ResourceViewHeaps *m_pResourceViewHeaps;
+        SPD_CS_Linear_Sampler m_spd_WaveOps_Packed_Linear_Sampler;
+        SPD_CS_Linear_Sampler m_spd_No_WaveOps_Packed_Linear_Sampler;
 
-        uint32_t m_Width;
-        uint32_t m_Height;
-        int m_mipCount;
-
-        VkDescriptorSetLayout m_descriptorSetLayout;
-
-        VkPipelineLayout m_pipelineLayout;
-        VkPipeline m_pipeline;
-
-        VkSampler m_sampler;
+        uint32_t GetMaxMipLevelCount(uint32_t Width, uint32_t Height);
     };
 }

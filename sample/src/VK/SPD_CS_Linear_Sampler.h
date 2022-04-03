@@ -20,15 +20,16 @@
 
 #include "Base/StaticBufferPool.h"
 #include "Base/Texture.h"
+#include "Base/DynamicBufferRing.h"
 
 namespace CAULDRON_VK
 {
-#define CS_MAX_MIP_LEVELS 12
+#define SPD_MAX_MIP_LEVELS 12
 
-    class CSDownsampler
+    class SPD_CS_Linear_Sampler
     {
     public:
-        void OnCreate(Device* pDevice, ResourceViewHeaps *pResourceViewHeaps, VkFormat outFormat);
+        void OnCreate(Device* pDevice, ResourceViewHeaps *pResourceViewHeaps, VkFormat outFormat, bool fallback, bool packed);
         void OnDestroy();
 
         void OnCreateWindowSizeDependentResources(VkCommandBuffer cmd_buf, uint32_t Width, uint32_t Height, Texture *pInput, int mips);
@@ -36,12 +37,13 @@ namespace CAULDRON_VK
 
         void Draw(VkCommandBuffer cmd_buf);
         Texture *GetTexture() { return &m_result; }
-        VkImageView GetTextureView(int i) { return m_mip[i].m_SRV; }
+        VkImageView GetTextureView(int i) { return m_RTV[i]; }
         void Gui();
 
-        struct PushConstantsCSSimple
+        struct PushConstants
         {
-            float outputSize[2];
+            int mips;
+            int numWorkGroups;
             float invInputSize[2];
         };
 
@@ -51,16 +53,12 @@ namespace CAULDRON_VK
 
         Texture m_result;
 
-        struct Pass
-        {
-            VkImageView m_RTV;
-            VkImageView m_SRV;
-            VkDescriptorSet m_descriptorSet;
-        };
-
-        Pass m_mip[CS_MAX_MIP_LEVELS];
+        VkImageView m_RTV[SPD_MAX_MIP_LEVELS]; // destinations (mips)
+        VkImageView m_SRV; // source
+        VkDescriptorSet m_descriptorSet;
 
         ResourceViewHeaps *m_pResourceViewHeaps;
+        DynamicBufferRing *m_pConstantBufferRing;
 
         uint32_t m_Width;
         uint32_t m_Height;
@@ -70,6 +68,11 @@ namespace CAULDRON_VK
 
         VkPipelineLayout m_pipelineLayout;
         VkPipeline m_pipeline;
+
+        VkBuffer m_globalCounter;
+        VmaAllocation m_globalCounterAllocation;
+
+        uint32_t* m_pCounter;
 
         VkSampler m_sampler;
     };

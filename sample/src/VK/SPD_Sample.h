@@ -18,7 +18,7 @@
 // THE SOFTWARE.
 #pragma once
 
-#include "SPDRenderer.h"
+#include "SPD_Renderer.h"
 
 //
 // This is the main class, it manages the state of the sample and does all the high level work without touching the GPU directly.
@@ -35,45 +35,33 @@
 //    - uses the SampleRenderer to update all the state to the GPU and do the rendering
 //
 
-class SPDSample : public FrameworkWindows
+class SPD_Sample : public FrameworkWindows
 {
 public:
-    SPDSample(LPCSTR name);
-    void OnParseCommandLine(LPSTR lpCmdLine, uint32_t *pWidth, uint32_t *pHeight, bool *pbFullScreen);
+    SPD_Sample(LPCSTR name);
     void OnCreate(HWND hWnd);
     void OnDestroy();
-    void BuildUI();
     void OnRender();
     bool OnEvent(MSG msg);
     void OnResize(uint32_t Width, uint32_t Height);
     void SetFullScreen(bool fullscreen);
     
 private:
-    Device                      m_device;
-    SwapChain                   m_swapChain;
-                               
-    GLTFCommon                 *m_pGltfLoader = nullptr;
-    bool                        m_loadingScene = false;
-                               
-    SPDRenderer                *m_pNode = nullptr;
-    SPDRenderer::State          m_state;
-                               
-    float                       m_distance;
-    float                       m_roll;
-    float                       m_pitch;
-                               
-    float                       m_time;             // WallClock in seconds.
-    double                      m_deltaTime;        // The elapsed time in milliseconds since the previous frame.
-    double                      m_lastFrameTime;
+    Device m_device;
+    SwapChain             m_swapChain;
 
-    // json config file
-    json                        m_jsonConfigFile;
-    std::vector<std::string>    m_sceneNames;
-    int                         m_activeScene;
-    int                         m_activeCamera;
-    bool                        m_stablePowerState;
-    bool                        m_isCpuValidationLayerEnabled;
-    bool                        m_isGpuValidationLayerEnabled;
+    GLTFCommon           *m_pGltfLoader;
 
-    bool                        m_bPlay;
+    SPD_Renderer       *m_Node;
+    SPD_Renderer::State m_state;
+
+    float                 m_distance;
+    float                 m_roll;
+    float                 m_pitch;
+
+    float                 m_time;             // WallClock in seconds.
+    double                m_lastFrameTime;
+    float                 m_timeStep = 0;
+
+    bool                  m_bPlay;
 };

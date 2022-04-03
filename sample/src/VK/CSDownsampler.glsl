@@ -28,20 +28,18 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 //--------------------------------------------------------------------------------------
 // Push Constants
 //--------------------------------------------------------------------------------------
-layout(push_constant) uniform pushConstants
-{
+layout(push_constant) uniform pushConstants {
     vec2 u_outputTextureSize;
     vec2 u_inputInvTextureSize;
-    int u_slice;
 } myPerMip;
 
 //--------------------------------------------------------------------------------------
 // Texture definitions
 //--------------------------------------------------------------------------------------
-layout(set=0, binding=0) uniform texture2DArray inputTexture;
+layout(set=0, binding=0) uniform texture2D inputTexture;
 layout(set=0, binding=1) uniform sampler inputSampler;
 
-layout(set=0, binding=2, rgba16f) uniform writeonly image2DArray outputTexture;
+layout(set=0, binding=2, rgba16f) uniform writeonly image2D outputTexture;
 
 // Main function
 //--------------------------------------------------------------------------------------
@@ -54,8 +52,5 @@ void main()
     ivec2 pixel_coord = ivec2(gl_GlobalInvocationID.xy);
     vec2 texcoord = myPerMip.u_inputInvTextureSize.xy * gl_GlobalInvocationID.xy * 2.0f + myPerMip.u_inputInvTextureSize.xy;
 
-    imageStore(outputTexture, 
-        ivec3(pixel_coord, myPerMip.u_slice),
-        texture(sampler2DArray(inputTexture, inputSampler), vec3(texcoord, myPerMip.u_slice))
-        );
+    imageStore(outputTexture, pixel_coord, texture(sampler2D(inputTexture, inputSampler), texcoord));
 }

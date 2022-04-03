@@ -29,47 +29,54 @@ namespace CAULDRON_VK
     class PSDownsampler
     {
     public:
-        void OnCreate(Device *pDevice, UploadHeap *pUploadHeap, ResourceViewHeaps *pResourceViewHeaps, DynamicBufferRing *m_pConstantBufferRing, StaticBufferPool *pStaticBufferPool);
+        void OnCreate(Device* pDevice, ResourceViewHeaps *pResourceViewHeaps, DynamicBufferRing *m_pConstantBufferRing, StaticBufferPool *pStaticBufferPool, VkFormat outFormat);
         void OnDestroy();
 
-        void Draw(VkCommandBuffer cmd_buf);
-        Texture *GetTexture() { return &m_cubeTexture; }
-        void GUI(int *pSlice);
+        void OnCreateWindowSizeDependentResources(uint32_t Width, uint32_t Height, Texture *pInput, int mips);
+        void OnDestroyWindowSizeDependentResources();
 
-        struct cbDownsample
+        void Draw(VkCommandBuffer cmd_buf);
+        Texture *GetTexture() { return &m_result; }
+        VkImageView GetTextureView(int i) { return m_mip[i].m_SRV; }
+        void Gui();
+
+        struct cbDownscale
         {
             float outWidth, outHeight;
             float invWidth, invHeight;
-            uint32_t slice;
-            uint32_t padding[3];
         };
 
     private:
-        Device                     *m_pDevice = nullptr;
+        Device                     *m_pDevice;
+        VkFormat                    m_outFormat;
 
-        Texture                     m_cubeTexture;
+        Texture                     m_result;
 
         struct Pass
         {
+            VkImageView     RTV; //dest
             VkImageView     m_SRV; //src
-            VkImageView     m_RTV; //dst
-            VkFramebuffer   m_frameBuffer;
-            VkDescriptorSet m_descriptorSet;
+            VkFramebuffer   frameBuffer;
+            VkDescriptorSet descriptorSet;
         };
 
-        Pass                         m_mip[PS_MAX_MIP_LEVELS * 6] = {};
+        Pass                         m_mip[PS_MAX_MIP_LEVELS];
 
-        StaticBufferPool            *m_pStaticBufferPool = nullptr;
-        ResourceViewHeaps           *m_pResourceViewHeaps = nullptr;
-        DynamicBufferRing           *m_pConstantBufferRing = nullptr;
+        StaticBufferPool            *m_pStaticBufferPool;
+        ResourceViewHeaps           *m_pResourceViewHeaps;
+        DynamicBufferRing           *m_pConstantBufferRing;
 
-        VkDescriptorSetLayout        m_descriptorSetLayout = VK_NULL_HANDLE;
+        uint32_t                     m_Width;
+        uint32_t                     m_Height;
+        int                          m_mipCount;
 
-        PostProcPS                   m_downsample;
+        VkDescriptorSetLayout        m_descriptorSetLayout;
 
-        VkRenderPass                 m_in = VK_NULL_HANDLE;
+        PostProcPS                   m_downscale;
 
-        VkSampler                    m_sampler = VK_NULL_HANDLE;
+        VkRenderPass                 m_in;
+
+        VkSampler                    m_sampler;
     };
 }
 
